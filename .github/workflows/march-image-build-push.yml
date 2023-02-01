@@ -1,0 +1,78 @@
+name: 'multi-arch image build'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+      - 'release-*'
+    tags:
+      - 'v*'
+  schedule:
+    - cron: '0 0 * * *'
+
+env:
+  IMAGE_NAME: tackle2-hub
+  IMAGE_REGISTRY: quay.io
+  IMAGE_NAMESPACE: jmontleon
+
+jobs:
+  push-quay:
+    name: Build and Push Manifest
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+    steps:
+    - name: Checkout Push to Registry action
+      uses: actions/checkout@main
+
+    - name: Install latest podman
+      if: matrix.install_latest
+      run: |
+        bash .github/install_latest_podman.sh
+
+# This package is not new enough for ppc64le builds
+#    - name: Install qemu dependency
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get install -y qemu-user-static
+
+    - name: configure QEMU action...
+      uses: docker/setup-qemu-action@master
+      with:
+        platforms: all
+
+    - name: Extract branch name for main
+      shell: bash
+      run: echo "branch=$(echo ${GITHUB_REF#refs/heads/}) latest" >> $GITHUB_ENV
+      if: ${{ github.ref == 'refs/heads/main' }}
+
+    - name: Extract tag name
+      shell: bash
+      run: echo "branch=$(echo ${GITHUB_REF#refs/tags/}) latest" >> $GITHUB_ENV
+      if: contains(github.ref, 'tags')
+
+    - name: Extract branch name for all other branches
+      shell: bash
+      run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_ENV
+      if: contains(github.ref, 'refs/heads/main') == false && contains(github.ref, 'tags') == false
+
+    - name: Build Image
+      id: build
+      uses: redhat-actions/buildah-build@main
+      with:
+        image: ${{ env.IMAGE_NAME }}
+        tags: ${{ env.branch }}
+        archs: amd64, arm64, ppc64le, s390x
+        containerfiles: |
+          ./Dockerfile
+
+    - name: Push To Quay
+      uses: redhat-actions/push-to-registry@main
+      id: push
+      with:
+        image: ${{ steps.build.outputs.image }}
+        tags: ${{ env.branch }}
+        registry: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}
+        username: ${{ secrets.QUAY_PUBLISH_ROBOT }}
+        password: ${{ secrets.QUAY_PUBLISH_TOKEN }}
