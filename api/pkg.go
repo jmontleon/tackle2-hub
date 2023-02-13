@@ -16,21 +16,29 @@ var (
 //
 // Params
 const (
-	ID       = "id"
-	ID2      = "id2"
-	Key      = "key"
-	Name     = "name"
-	Wildcard = "wildcard"
-	File     = "file"
+	ID        = "id"
+	ID2       = "id2"
+	Key       = "key"
+	Name      = "name"
+	Wildcard  = "wildcard"
+	FileField = "file"
 )
 
 //
 // Headers
 const (
+	Accept        = "Accept"
 	Authorization = "Authorization"
 	ContentLength = "Content-Length"
 	ContentType   = "Content-Type"
 	Directory     = "X-Directory"
+)
+
+//
+// Accepted (mime)
+const (
+	AppJson  = "application/json"
+	AppOctet = "application/octet-stream"
 )
 
 //
@@ -65,8 +73,9 @@ func All() []Handler {
 		&TaskHandler{},
 		&TaskGroupHandler{},
 		&PathfinderHandler{},
-                &TicketHandler{},
-                &TrackerHandler{},
+		&TicketHandler{},
+		&TrackerHandler{},
+		&FileHandler{},
 	}
 }
 

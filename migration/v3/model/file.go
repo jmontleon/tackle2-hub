@@ -6,23 +6,28 @@ import (
 	"gorm.io/gorm"
 	"os"
 	"path"
+	"time"
 )
 
-type BucketOwner struct {
-	Bucket string `gorm:"index"`
+type File struct {
+	Model
+	Name       string
+	Path       string `gorm:"<-:create;uniqueIndex"`
+	Expiration *time.Time
 }
 
-func (m *BucketOwner) BeforeCreate(db *gorm.DB) (err error) {
+func (m *File) BeforeCreate(db *gorm.DB) (err error) {
 	uid := uuid.New()
-	m.Bucket = path.Join(
+	m.Path = path.Join(
 		Settings.Hub.Bucket.Path,
+		".file",
 		uid.String())
-	err = os.MkdirAll(m.Bucket, 0777)
+	err = os.MkdirAll(path.Dir(m.Path), 0777)
 	if err != nil {
 		err = liberr.Wrap(
 			err,
 			"path",
-			m.Bucket)
+			m.Path)
 	}
 	return
 }
